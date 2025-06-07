@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能AI助手</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .chat-box {
+            height: 300px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 20px;
+            overflow-y: auto;
+            border-radius: 5px;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 5px;
+        }
+        .user-message {
+            background-color: #e3f2fd;
+            margin-left: 20%;
+        }
+        .ai-message {
+            background-color: #f1f1f1;
+            margin-right: 20%;
+        }
+        input, textarea, button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .tab {
+            overflow: hidden;
+            border: 1px solid #ccc;
+            background-color: #f1f1f1;
+            border-radius: 5px 5px 0 0;
+        }
+        .tab button {
+            width: auto;
+            float: left;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 14px 16px;
+            transition: 0.3s;
+        }
+        .tab button:hover {
+            background-color: #ddd;
+        }
+        .tab button.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .tabcontent {
+            display: none;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+            background-color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>智能AI助手</h1>
+        
+        <div class="tab">
+            <button class="tablinks active" onclick="openTab(event, 'chat')">对话</button>
+            <button class="tablinks" onclick="openTab(event, 'teach')">教学</button>
+        </div>
+        
+        <div id="chat" class="tabcontent" style="display: block;">
+            <div class="chat-box" id="chatBox"></div>
+            <input type="text" id="questionInput" placeholder="输入你的问题...">
+            <button onclick="askQuestion()">提问</button>
+        </div>
+        
+        <div id="teach" class="tabcontent">
+            <input type="text" id="teachQuestion" placeholder="输入要教的问题...">
+            <textarea id="teachAnswer" rows="4" placeholder="输入问题的答案..."></textarea>
+            <button onclick="teachAI()">教学</button>
+        </div>
+    </div>
+
+    <script>
+        function openTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tabcontent");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("tablinks");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
+        }
+
+        function addMessage(sender, message) {
+            const chatBox = document.getElementById('chatBox');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            messageDiv.textContent = message;
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function askQuestion() {
+            const question = document.getElementById('questionInput').value.trim();
+            if (!question) return;
+            
+            addMessage('user', question);
+            document.getElementById('questionInput').value = '';
+            
+            fetch('/ask', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `question=${encodeURIComponent(question)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success' || data.status === 'not_found') {
+                    addMessage('ai', data.answer);
+                } else {
+                    addMessage('ai', '出错了: ' + (data.error || '未知错误'));
+                }
+            })
+            .catch(error => {
+                addMessage('ai', '网络错误: ' + error);
+            });
+        }
+
+        function teachAI() {
+            const question = document.getElementById('teachQuestion').value.trim();
+            const answer = document.getElementById('teachAnswer').value.trim();
+            
+            if (!question || !answer) {
+                alert('问题和答案都不能为空！');
+                return;
+            }
+            
+            fetch('/teach', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `question=${encodeURIComponent(question)}&answer=${encodeURIComponent(answer)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('教学成功！');
+                    document.getElementById('teachQuestion').value = '';
+                    document.getElementById('teachAnswer').value = '';
+                } else {
+                    alert('教学失败: ' + (data.error || '未知错误'));
+                }
+            })
+            .catch(error => {
+                alert('网络错误: ' + error);
+            });
+        }
+
+        // 允许按Enter键提问
+        document.getElementById('questionInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                askQuestion();
+            }
+        });
+    </script>
+</body>
+</html>
